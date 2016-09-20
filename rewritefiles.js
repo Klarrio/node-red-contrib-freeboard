@@ -21,17 +21,27 @@ var head=
   '	            });\n'+
   '	</script>';
 
+var exportLinks=
+  '<li><i class="icon-share icon-white"></i>\n'+
+  '    <label data-bind="click: saveDashboardClicked">Export Freeboard</label>\n'+
+  '    <label style="display: none;" data-bind="click: exportDashboard" data-pretty="true">[Pretty]</label>\n'+
+  '    <label style="display: none;" data-bind="click: exportDashboard" data-pretty="false">[Minified]</label>\n'+
+  '</li>\n';
+
 fs.readFile('node_modules/freeboard/index.html' , 'utf8', function (err,data) {
   if (err) {
     return console.log(err);
   }
-  var result = data.replace(/head.js[\s\S]*?<\/script>/g, head);
+  var result = data.replace(/head.js[\s\S]*?<\/script>/g, head)
+                   .replace(/<li><i class="icon-download-alt[\s\S]*?<\/li>/g, function (original) {
+                      return original + '\n' + exportLinks;
+                   });
   fs.writeFile('node_modules/freeboard/index.html', result, 'utf8', function (err) {
      if (err) return console.log(err);
   });
 });
 
-var saveDashboard=
+var saveAndExportDashboard=
 	'this.saveDashboard = function(_thisref, event)\n'+
 	'{\n'+
 	'	var pretty = $(event.currentTarget).data("pretty");\n'+
@@ -54,13 +64,30 @@ var saveDashboard=
 	'	}).done(function(){\n'+
 	'		new DialogBox("Dashboard is saved, make sure to bookmark the URL.", "Info", "OK");\n'+
 	'	});\n'+
+	'}\n'+
+  '\n'+
+  'this.exportDashboard = function(_thisref, event)\n'+
+	'{\n'+
+	'	var pretty = $(event.currentTarget).data(\'pretty\');\n'+
+	'	var contentType = \'application/octet-stream\';\n'+
+	'	var a = document.createElement(\'a\');\n'+
+	'	if(pretty){\n'+
+	'		var blob = new Blob([JSON.stringify(self.serialize(), null, \'\\t\')], {\'type\': contentType});\n'+
+  ' }else{\n'+
+	'		var blob = new Blob([JSON.stringify(self.serialize())], {\'type\': contentType});\n'+
+	'	}\n'+
+	'	document.body.appendChild(a);\n'+
+	'	a.href = window.URL.createObjectURL(blob);\n'+
+	'	a.download = "dashboard.json";\n'+
+	'	a.target="_self";\n'+
+	'	a.click();\n'+
 	'}\n';
 
 fs.readFile('node_modules/freeboard/js/freeboard.js' , 'utf8', function (err,data) {
   if (err) {
     return console.log(err);
   }
-  var result = data.replace(/this\.saveDashboard =[\s\S]*?a\.click[\s\S]*?\}/g, saveDashboard);
+  var result = data.replace(/this\.saveDashboard =[\s\S]*?a\.click[\s\S]*?\}/g, saveAndExportDashboard);
   fs.writeFile('node_modules/freeboard/js/freeboard.js', result, 'utf8', function (err) {
      if (err) return console.log(err);
   });
